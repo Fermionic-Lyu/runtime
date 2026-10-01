@@ -1,0 +1,11 @@
+<clickhouse>
+  <remote_servers replace="true">
+    <cluster>
+      <shard><replica>
+        <host>localhost</host><port>9000</port>
+        <user>clickhouse</user><password from_env="CLICKHOUSE_PASSWORD"/>
+      </replica></shard>
+    </cluster>
+  </remote_servers>
+  <listen_host>0.0.0.0</listen_host>
+</clickhouse>

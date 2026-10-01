@@ -33,6 +33,7 @@ const (
 
 type Config struct {
 	featureflags.Config
+	RuntimeBridgePOC bool `env:"RUNTIME_BRIDGE_POC"`
 
 	AdminToken string `env:"ADMIN_TOKEN"`
 

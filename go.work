@@ -11,6 +11,7 @@ use (
 	./packages/local-dev
 	./packages/nomad-nodepool-apm
 	./packages/orchestrator
+	./packages/runtime-bridge
 	./packages/shared
 
 	./tests/integration

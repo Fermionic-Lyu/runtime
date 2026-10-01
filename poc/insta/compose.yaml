@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: poc-local-only
+      POSTGRES_DB: e2b
+    ports:
+      - "127.0.0.1:15439:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "e2b"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  redis:
+    image: redis:7.4.6
+    ports:
+      - "127.0.0.1:16389:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8.30.16
+    environment:
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: poc-local-only
+      CLICKHOUSE_DB: default
+    ports:
+      - "127.0.0.1:19009:9000"
+      - "127.0.0.1:18129:8123"
+    volumes:
+      - ./clickhouse.xml:/etc/clickhouse-server/config.d/e2b.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user clickhouse --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+volumes:
+  postgres:

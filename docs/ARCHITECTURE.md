@@ -85,6 +85,26 @@ flowchart TB
 
 ## Services
 
+### Optional external-runtime POC
+
+The fork includes a local POC in [`poc/insta`](../poc/insta/README.md). With
+`RUNTIME_BRIDGE_POC=true`, the API permits only health and the implemented sandbox
+create/get/list/delete/timeout endpoints. Existing local service discovery sends
+orchestrator RPCs to `packages/runtime-bridge` on loopback port 15008. That service
+maps a single E2B team/template to a dedicated compute tenant/branch and image via
+the existing insta-compute HTTPS API; it does not run Firecracker.
+
+The unmodified Python SDK uses API port 18080 and an explicit sandbox URL pointing
+to the bridge's process listener on loopback port 49983. This implements only
+buffered foreground `Process.Start`, with root commands, cwd, env and exit status.
+It bypasses client-proxy and guest envd. The local topology retains PostgreSQL,
+Redis and ClickHouse on ports 15439, 16389 and 19009, respectively. A private local
+JSON journal tracks runtime ownership and expiration across bridge restarts;
+runtime-enforced leases and HA are not implemented. See the POC's
+[capability gaps](../poc/insta/GAPS.md) before extending this topology.
+
+### Standard E2B services
+
 | Service | Package | Runs on | Purpose |
 |---|---|---|---|
 | API | `packages/api` | API nodes | Public REST API; sandbox lifecycle, placement, auth, quotas |

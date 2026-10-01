@@ -111,6 +111,9 @@ func NewGinServer(ctx context.Context, config cfg.Config, tel *telemetry.Client,
 	r.UseRawPath = true
 
 	r.Use(gin.Recovery())
+	if config.RuntimeBridgePOC {
+		r.Use(customMiddleware.RuntimeBridgePOC())
+	}
 
 	// Every secrets response is uncacheable, whichever layer answers. Must run
 	// before anything that can write a response.
