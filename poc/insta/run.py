@@ -1,7 +1,9 @@
 import argparse
 import json
 import os
+import signal
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -39,11 +41,11 @@ def wait_http(url, process):
     raise TimeoutError("POC service did not become ready")
 
 
-def stop(process):
+def stop(process, timeout=12):
     if process.poll() is None:
         process.terminate()
         try:
-            process.wait(timeout=12)
+            process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait()
@@ -51,7 +53,9 @@ def stop(process):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--smoke", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--smoke", action="store_true")
+    mode.add_argument("--demo", action="store_true")
     args = parser.parse_args()
     os.umask(0o077)
     LOCAL.mkdir(mode=0o700, exist_ok=True)
@@ -176,16 +180,27 @@ def main():
     children = []
     logs = []
 
+    def request_stop(_signal, _frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, request_stop)
+
     def launch(name, env, argv):
         log = (LOCAL / (name + ".log")).open("ab")
         logs.append(log)
         child = subprocess.Popen(
-            argv, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT
+            argv,
+            cwd=ROOT,
+            env=env,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
         )
         children.append(child)
         return child
 
     bridge = None
+    demo = None
     try:
         bridge = launch("bridge", bridge_env, [str(LOCAL / "bridge")])
         wait_http("http://127.0.0.1:49983/health", bridge)
@@ -201,6 +216,18 @@ def main():
         os.environ["E2B_API_KEY"] = (LOCAL / "api-key").read_text().strip()
         os.environ["E2B_API_URL"] = "http://127.0.0.1:18080"
         os.environ["E2B_SANDBOX_URL"] = "http://127.0.0.1:49983"
+        if args.demo:
+            demo_env = {
+                **api_env,
+                "E2B_API_KEY": os.environ["E2B_API_KEY"],
+                "E2B_API_URL": os.environ["E2B_API_URL"],
+                "E2B_SANDBOX_URL": os.environ["E2B_SANDBOX_URL"],
+            }
+            demo = launch(
+                "demo", demo_env, [sys.executable, str(ROOT / "poc/insta/demo.py")]
+            )
+            wait_http("http://127.0.0.1:18780/health", demo)
+            print("Open demo: http://127.0.0.1:18780", flush=True)
         if args.smoke:
             import smoke
 
@@ -212,15 +239,19 @@ def main():
                 flush=True,
             )
             print(
-                "Use the private .local/api-key file. Ctrl-C stops local processes; kill sandboxes first.",
+                "Ctrl-C deletes the demo sandbox and stops local processes."
+                if args.demo
+                else "Use the private .local/api-key file. Ctrl-C stops local processes; kill sandboxes first.",
                 flush=True,
             )
-            while all(child.poll() is None for child in (api, bridge)):
+            while all(child.poll() is None for child in children):
                 time.sleep(1)
             raise RuntimeError("POC service exited; inspect .local logs")
     except KeyboardInterrupt:
         pass
     finally:
+        if demo is not None:
+            stop(demo, timeout=90)
         for child in reversed(children):
             stop(child)
         for log in logs:

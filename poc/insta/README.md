@@ -68,6 +68,44 @@ Use `E2B_SANDBOX_URL`; do not use SDK debug mode to bypass creation. Commands re
 
 ## Supported and rejected behavior
 
+### Interactive demo
+
+With the same prerequisites and environment variables as above, run:
+
+```sh
+poc/insta/.local/venv/bin/python poc/insta/run.py --demo
+```
+
+Open `http://127.0.0.1:18780`. Create a sandbox, run the environment example, then
+try writing and reading `/tmp/demo.json` to show state persists between commands.
+The error example demonstrates separate stdout/stderr and exit code 7. The page
+also supports renewal and deletion, shows the real sandbox ID and counts down
+the 180-second lifetime. Commands use the published E2B SDK through the existing
+POC; no mock execution mode is included.
+
+The demo admits one sandbox at a time. Execution is buffered and limited to 55
+seconds. Refreshing the page preserves the server-side session; closing the tab
+leaves the sandbox running until its deadline while the API/bridge remain up.
+Ctrl-C or SIGTERM to the runner stops the demo first and attempts sandbox deletion;
+allow up to 90 seconds for an in-flight command and cleanup. Forced termination
+requires restarting the bridge with its journal to recover pending resources.
+
+The demo listens only on `127.0.0.1`, validates Host/Origin and a per-process browser
+token, and keeps the E2B key on the server. It is intended for one trusted local
+user; do not expose it through a public proxy. Use the literal loopback address,
+not a custom hostname. Stopping the runner does not delete the dedicated compute
+tenant or the local Docker dependencies.
+
+```sh
+python -m unittest discover -s poc/insta -p 'test_demo.py' -v
+```
+
+Browser validation covered create, environment inspection, file persistence,
+stdout/stderr with exit code 7, and renewal. A real foreground-process-group
+SIGINT test confirmed deletion through the compute API before runner exit.
+
+### Capability matrix
+
 | Operation | POC behavior |
 |---|---|
 | Create/get/list/delete | Real E2B API and real compute service |

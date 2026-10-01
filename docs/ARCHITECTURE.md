@@ -103,6 +103,13 @@ JSON journal tracks runtime ownership and expiration across bridge restarts;
 runtime-enforced leases and HA are not implemented. See the POC's
 [capability gaps](../poc/insta/GAPS.md) before extending this topology.
 
+`poc/insta/run.py --demo` additionally starts a loopback web interface on port
+18780. Its Python server uses the unmodified E2B SDK to create one sandbox,
+execute foreground commands, renew its three-minute timeout and delete it.
+E2B credentials stay server-side; browser mutations require a per-process token
+and validated Host/Origin. Stopping the runner first stops the demo and attempts
+to delete its sandbox before shutting down the API and bridge.
+
 ### Standard E2B services
 
 | Service | Package | Runs on | Purpose |
